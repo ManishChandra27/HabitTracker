@@ -1,0 +1,1262 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Habit Journal</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: four bordered cards in one column. 1) identity, progress, streak, day grid. 2) daily journal with ratings and if-then plan. 3) insights chart. 4) weekly review. Dark first, light variant. */
+:root {
+  --bg: #000000;
+  --card: #060807;
+  --line: #262b29;
+  --fg: #f2f5f3;
+  --muted: #8d9792;
+  --accent: #22b36b;
+  --accent-soft: #04140c;
+  --blue: #4aa3ff;
+  --blue-soft: #08182b;
+  --warn: #ff6b6b;
+  --warn-soft: #1c0909;
+  --field: #0b0d0c;
+  --s1: #3987e5;
+  --s2: #d95926;
+  --s3: #199e70;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f3f6f4; --card: #ffffff; --line: #d8dfdb; --fg: #0c1210; --muted: #5a6661;
+    --accent: #118a50; --accent-soft: #e3f4ea; --blue: #14609f; --blue-soft: #e2eefa;
+    --warn: #b3261e; --warn-soft: #fdecea; --field: #fbfdfc;
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #f3f6f4; --card: #ffffff; --line: #d8dfdb; --fg: #0c1210; --muted: #5a6661;
+  --accent: #118a50; --accent-soft: #e3f4ea; --blue: #14609f; --blue-soft: #e2eefa;
+  --warn: #b3261e; --warn-soft: #fdecea; --field: #fbfdfc;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-block: 24px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 760px; margin: 0 auto; display: grid; gap: 16px; }
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px;
+  min-width: 0;
+}
+h1 { font-size: 1.1rem; font-weight: 600; margin: 0 0 6px; text-wrap: balance; }
+.identity-line { margin: 0 0 16px; color: var(--accent); font-weight: 600; overflow-wrap: anywhere; }
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+.count { font-size: 1.9rem; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.pill {
+  background: var(--blue-soft); color: var(--blue);
+  font-size: 0.85rem; font-weight: 600; padding: 4px 12px; border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+.bar { height: 8px; background: var(--line); border-radius: 999px; overflow: hidden; margin: 14px 0 12px; }
+.bar > span { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 999px; transition: width .3s ease; }
+.habit-line { color: var(--fg); margin: 0 0 12px; overflow-wrap: anywhere; }
+
+.stats { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.chip {
+  border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px;
+  font-size: 0.82rem; color: var(--muted); font-variant-numeric: tabular-nums;
+}
+.chip b { color: var(--fg); font-weight: 600; }
+.chip-btn { appearance: none; font-family: inherit; cursor: pointer; background: transparent; color: var(--fg); border-color: var(--accent); }
+
+.alert {
+  background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn);
+  border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; font-size: 0.9rem; font-weight: 500;
+}
+
+.settings { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 18px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+.field { display: grid; gap: 4px; min-width: 0; flex: 1 1 140px; }
+.field label, .lab { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+input[type="text"], input[type="date"], select, textarea {
+  width: 100%; background: var(--field); color: var(--fg);
+  border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px;
+  font: inherit; min-width: 0;
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, svg:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; }
+.day {
+  appearance: none; font: inherit; color: var(--fg); cursor: pointer;
+  background: var(--field); border: 1px solid var(--line); border-radius: 12px;
+  padding: 10px 4px 9px; display: grid; justify-items: center; gap: 2px; min-height: 84px; align-content: center;
+}
+.day:hover { border-color: var(--muted); }
+.day .mark { height: 22px; display: grid; place-items: center; font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.day .mark svg { width: 20px; height: 20px; }
+.day .lbl { font-size: 0.8rem; }
+.day .date { font-family: var(--font-mono); font-size: 0.68rem; color: var(--muted); }
+.day.done { background: var(--accent-soft); border-color: transparent; }
+.day.done .mark { color: var(--accent); }
+.day.today .date { color: var(--accent); font-weight: 500; }
+.day.sel { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.editor-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.editor-head h2 { margin: 0; font-size: 1.05rem; font-weight: 600; }
+.editor-head .sub { color: var(--muted); font-family: var(--font-mono); font-size: 0.8rem; }
+.editor-head .tabs { margin: 0; }
+.check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+.remind {
+  background: var(--field); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 12px; display: grid; gap: 6px; margin-bottom: 14px; font-size: 0.9rem; overflow-wrap: anywhere;
+}
+.remind .k { font-family: var(--font-mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-right: 8px; }
+
+.rates { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 14px; }
+.rate-group { display: grid; gap: 6px; }
+.rate { display: flex; gap: 6px; }
+.rate button {
+  appearance: none; font: inherit; font-size: 0.9rem; font-variant-numeric: tabular-nums; cursor: pointer;
+  width: 38px; height: 36px; border-radius: 9px; border: 1px solid var(--line); background: var(--field); color: var(--fg);
+}
+.rate button:hover { border-color: var(--muted); }
+.rate button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.hint { font-size: 0.75rem; color: var(--muted); margin-top: -6px; margin-bottom: 14px; }
+
+.tabs { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
+.tabs button {
+  appearance: none; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 0.85rem;
+  padding: 6px 14px; cursor: pointer;
+}
+.tabs button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+textarea {
+  min-height: 460px; resize: vertical; font-family: var(--font-mono); font-size: 0.88rem; line-height: 1.65;
+}
+textarea.short { min-height: 84px; font-family: var(--font-body); font-size: 0.92rem; line-height: 1.5; }
+.preview {
+  min-height: 460px; background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; overflow-wrap: anywhere;
+}
+.preview h2, .preview h3, .preview h4 { margin: 14px 0 4px; font-size: 1rem; text-wrap: balance; }
+.preview h2:first-child, .preview h3:first-child { margin-top: 2px; }
+.preview ul { margin: 4px 0 8px; padding-left: 20px; }
+.preview p { margin: 4px 0; }
+.preview code { font-family: var(--font-mono); font-size: 0.85em; background: var(--line); padding: 1px 5px; border-radius: 5px; }
+.preview .empty { color: var(--muted); }
+
+.plan { margin-top: 16px; display: grid; gap: 8px; }
+.plan h3 { margin: 0; font-size: 0.95rem; font-weight: 600; }
+.plan-row { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; }
+.plan-row .lab { min-width: 34px; }
+
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+.btn {
+  appearance: none; font: inherit; font-size: 0.88rem; cursor: pointer; color: var(--fg);
+  background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px;
+}
+.btn:hover { border-color: var(--muted); }
+.status { margin-left: auto; font-size: 0.8rem; color: var(--muted); }
+.reset { width: 100%; padding: 11px; border-radius: 999px; font-weight: 600; color: var(--muted); margin-top: 16px; }
+.reset.armed { color: var(--warn); border-color: var(--warn); }
+
+/* Insights chart */
+.legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; font-size: 0.85rem; color: var(--muted); }
+.legend .key { display: inline-flex; align-items: center; gap: 8px; }
+.legend .key i { width: 16px; }
+i.s1 { background: var(--s1); }
+i.s2 { background: var(--s2); }
+i.s3 { background: var(--s3); }
+.legend i, .tip i { display: inline-block; height: 2px; border-radius: 2px; }
+.chartwrap { position: relative; }
+.chartwrap svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
+.chartwrap .ax { font-size: 11px; fill: var(--muted); font-family: var(--font-body); }
+.chartwrap .gl { stroke: var(--line); stroke-width: 1; }
+.chartwrap .cross { stroke: var(--muted); stroke-width: 1; }
+.chartwrap .ln { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chartwrap .ln.s1 { stroke: var(--s1); }
+.chartwrap .ln.s2 { stroke: var(--s2); }
+.chartwrap .ln.s3 { stroke: var(--s3); }
+.chartwrap .ring { fill: var(--card); }
+.chartwrap .dot.s1 { fill: var(--s1); }
+.chartwrap .dot.s2 { fill: var(--s2); }
+.chartwrap .dot.s3 { fill: var(--s3); }
+.chartwrap .dn { fill: none; stroke: var(--line); stroke-width: 1; }
+.chartwrap .dn.on { fill: var(--muted); stroke: none; }
+.tip {
+  position: absolute; top: 6px; left: 0; pointer-events: none; z-index: 2; min-width: 150px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 0.8rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+.tip .tt { color: var(--muted); font-family: var(--font-mono); font-size: 0.72rem; margin-bottom: 4px; }
+.tip .tr { display: flex; align-items: center; gap: 8px; line-height: 1.7; }
+.tip .tr i { width: 10px; }
+.tip .tr i.s0 { visibility: hidden; }
+.tip .tr b { font-weight: 700; min-width: 1.5ch; }
+.tip .tr span { color: var(--muted); }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+th, td { text-align: left; padding: 7px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
+th { color: var(--muted); font-weight: 500; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; }
+tr:last-child td { border-bottom: 0; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.facts { margin: 14px 0 0; padding-left: 18px; font-size: 0.9rem; display: grid; gap: 4px; }
+.facts:empty { display: none; }
+.empty-ins { color: var(--muted); font-size: 0.9rem; margin: 0 0 4px; }
+
+/* Book notes and action points */
+.bookbox { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); display: grid; gap: 12px; }
+.bookbox h3 { margin: 0; font-size: 0.95rem; font-weight: 600; }
+.bookbox h3 span { color: var(--muted); font-weight: 400; font-size: 0.85rem; margin-left: 6px; overflow-wrap: anywhere; }
+.actlist { list-style: none; margin: 0 0 4px; padding: 0; display: grid; gap: 6px; }
+.actlist li { display: flex; align-items: flex-start; gap: 10px; background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.actlist input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); margin-top: 2px; flex: none; }
+.actlist .t { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.actlist .tx.done { color: var(--muted); text-decoration: line-through; }
+.actlist .src { display: block; font-family: var(--font-mono); font-size: 0.7rem; color: var(--muted); }
+.actlist .rm { appearance: none; border: 0; background: transparent; color: var(--muted); cursor: pointer; font: inherit; font-size: 1.1rem; line-height: 1; padding: 0 4px; }
+.actlist .rm:hover { color: var(--warn); }
+.add-row { display: flex; gap: 8px; }
+.add-row input { flex: 1; }
+
+/* Weekly review */
+.locked, .summary { color: var(--muted); font-size: 0.9rem; margin: 0 0 14px; }
+.rv-fields { display: grid; gap: 12px; }
+.rv-sel { flex: 0 1 220px; }
+
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .bar > span { transition: none; } }
+</style>
+
+<div class="wrap">
+  <section class="card" aria-labelledby="title">
+    <h1 id="title">14-day habit journal</h1>
+    <p class="identity-line" id="identityline" hidden></p>
+
+    <div class="top">
+      <div class="count" id="count">0/14 days</div>
+      <div class="pill" id="pct">0% completed</div>
+    </div>
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="bar"><span id="barfill"></span></div>
+    <p class="habit-line" id="habitline"></p>
+
+    <div class="stats">
+      <span class="chip">Current streak <b id="curStreak">0</b> days</span>
+      <span class="chip">Best streak <b id="bestStreak">0</b> days</span>
+      <button type="button" class="chip chip-btn" id="reviewChip" hidden></button>
+    </div>
+    <div class="alert" id="alert" role="status" hidden></div>
+
+    <div class="settings">
+      <div class="field">
+        <label for="identity">My identity</label>
+        <input type="text" id="identity" maxlength="140" placeholder="I am the kind of person who wakes up on time and finishes what I start">
+      </div>
+      <div class="field">
+        <label for="habit">Habit</label>
+        <input type="text" id="habit" maxlength="120" placeholder="e.g. Wake up at my planned time">
+      </div>
+      <div class="field">
+        <label for="twomin">2-minute version</label>
+        <input type="text" id="twomin" maxlength="140" placeholder="e.g. Put my feet on the floor and stand up">
+      </div>
+      <div class="field">
+        <label for="book">Book I am reading</label>
+        <input type="text" id="book" maxlength="140" placeholder="e.g. Atomic Habits by James Clear">
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="start">Start date</label>
+          <input type="date" id="start">
+        </div>
+        <div class="field">
+          <label for="length">Length</label>
+          <select id="length">
+            <option value="7">7 days</option>
+            <option value="14">14 days</option>
+            <option value="21">21 days</option>
+            <option value="30">30 days</option>
+            <option value="66">66 days</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+    <button class="btn reset" id="reset" type="button">Reset challenge</button>
+  </section>
+
+  <section class="card" id="editor" aria-labelledby="edtitle">
+    <div class="editor-head">
+      <div>
+        <h2 id="edtitle">Day 1</h2>
+        <div class="sub" id="edsub"></div>
+      </div>
+      <label class="check"><input type="checkbox" id="donebox"> Done for this day</label>
+    </div>
+
+    <div class="remind" id="remind" hidden></div>
+
+    <div class="rates">
+      <div class="rate-group">
+        <span class="lab" id="moodLab">Mood</span>
+        <div class="rate" id="moodRate" role="group" aria-labelledby="moodLab"></div>
+      </div>
+      <div class="rate-group">
+        <span class="lab" id="energyLab">Energy</span>
+        <div class="rate" id="energyRate" role="group" aria-labelledby="energyLab"></div>
+      </div>
+      <div class="rate-group">
+        <span class="lab" id="identityLab">Identity match</span>
+        <div class="rate" id="identityRate" role="group" aria-labelledby="identityLab"></div>
+      </div>
+    </div>
+    <div class="hint">1 = low, 5 = great. Identity match: 5 means today felt exactly like the person I want to become. Tap the same number again to clear it.</div>
+
+    <div class="tabs" role="group" aria-label="Editor mode">
+      <button type="button" id="tabWrite" aria-pressed="true">Write</button>
+      <button type="button" id="tabPreview" aria-pressed="false">Preview</button>
+    </div>
+    <textarea id="note" aria-label="Journal entry in markdown" spellcheck="true"></textarea>
+    <div class="preview" id="preview" hidden></div>
+
+    <div class="plan">
+      <h3>Plan for tomorrow (if-then)</h3>
+      <div class="plan-row">
+        <label class="lab" for="planIf">If</label>
+        <input type="text" id="planIf" maxlength="160" placeholder="my alarm rings at 6:00">
+        <label class="lab" for="planThen">Then</label>
+        <input type="text" id="planThen" maxlength="160" placeholder="I put both feet on the floor and stand up immediately">
+      </div>
+    </div>
+
+    <div class="bookbox">
+      <h3>Book notes <span id="bookname"></span></h3>
+      <div class="field">
+        <label for="chapter">Chapter or pages read today</label>
+        <input type="text" id="chapter" maxlength="80" placeholder="e.g. Chapter 3, pages 40 to 62">
+      </div>
+      <div class="field">
+        <label for="lessons">What I learned from the book today</label>
+        <textarea id="lessons" class="short" placeholder="- The idea in my own words&#10;- One example that made it clear"></textarea>
+      </div>
+      <div class="field">
+        <span class="lab" id="actLab">How I will implement it (action points)</span>
+        <ul class="actlist" id="actList" aria-labelledby="actLab" hidden></ul>
+        <div class="add-row">
+          <input type="text" id="actNew" maxlength="200" aria-labelledby="actLab" placeholder="e.g. Put my running shoes next to the bed tonight">
+          <button type="button" class="btn" id="actAdd">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" type="button" id="copyDay">Copy this day</button>
+      <button class="btn" type="button" id="copyAll">Copy all as markdown</button>
+      <span class="status" id="status" aria-live="polite"></span>
+    </div>
+  </section>
+
+  <section class="card" id="bookcard" aria-labelledby="bktitle">
+    <div class="editor-head">
+      <div>
+        <h2 id="bktitle">Book action points</h2>
+        <div class="sub" id="bksub"></div>
+      </div>
+      <div class="tabs" role="group" aria-label="Action point filter">
+        <button type="button" id="bkOpen" aria-pressed="true">To do</button>
+        <button type="button" id="bkAll" aria-pressed="false">All</button>
+      </div>
+    </div>
+    <p class="empty-ins" id="bkEmpty" hidden></p>
+    <ul class="actlist" id="bkList" hidden></ul>
+  </section>
+
+  <section class="card" id="insights" aria-labelledby="institle">
+    <div class="editor-head">
+      <div>
+        <h2 id="institle">Insights</h2>
+        <div class="sub">Ratings and completion by day</div>
+      </div>
+      <div class="tabs" role="group" aria-label="Insights view">
+        <button type="button" id="viewChart" aria-pressed="true">Chart</button>
+        <button type="button" id="viewTable" aria-pressed="false">Table</button>
+      </div>
+    </div>
+    <p class="empty-ins" id="insEmpty" hidden>Rate mood, energy and identity match on a few days and your patterns will appear here.</p>
+    <div class="legend" id="legend"></div>
+    <div class="chartwrap" id="chartwrap">
+      <svg id="chart" tabindex="0" role="img" aria-label="Line chart of mood, energy and identity match ratings by day, with a strip showing which days were done. Use the left and right arrow keys to read each day, or switch to the table view."></svg>
+      <div class="tip" id="tip" hidden></div>
+    </div>
+    <div class="tablewrap" id="tablewrap" hidden></div>
+    <ul class="facts" id="facts"></ul>
+  </section>
+
+  <section class="card" id="review" aria-labelledby="rvtitle">
+    <div class="editor-head">
+      <div>
+        <h2 id="rvtitle">Weekly review</h2>
+        <div class="sub" id="rvsub"></div>
+      </div>
+      <div class="field rv-sel" id="rvselwrap" hidden>
+        <label for="rvweek">Week</label>
+        <select id="rvweek"></select>
+      </div>
+    </div>
+    <p class="locked" id="rvlocked" hidden></p>
+    <div id="rvform" hidden>
+      <p class="summary" id="rvsummary"></p>
+      <div class="rv-fields">
+        <div class="field">
+          <label for="rvWorked">What worked this week</label>
+          <textarea id="rvWorked" class="short"></textarea>
+        </div>
+        <div class="field">
+          <label for="rvFailed">What did not work</label>
+          <textarea id="rvFailed" class="short"></textarea>
+        </div>
+        <div class="field">
+          <label for="rvChange">One change for next week</label>
+          <textarea id="rvChange" class="short"></textarea>
+        </div>
+      </div>
+      <div class="actions"><span class="status" id="rvStatus" aria-live="polite"></span></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var KEY = "habit-journal-v1";
+  var TEMPLATE =
+    "## Habit loop\n" +
+    "- Cue (what triggered it): \n" +
+    "- Craving (what I really wanted): \n" +
+    "- Response (what I did): \n" +
+    "- Reward (what I got, was it worth it?): \n" +
+    "- Replacement (next time this cue shows up, I will): \n\n" +
+    "## Identity vote\n" +
+    "- Today I acted like the person I want to become by: \n\n" +
+    "## Personality check\n" +
+    "- When I felt anger, laziness or distraction today, I reacted by: \n" +
+    "- A value I followed today (discipline, honesty, focus): \n" +
+    "- An excuse I gave myself today: \n\n" +
+    "## What I learned today\n- \n\n" +
+    "## What went wrong today\n- \n\n" +
+    "## What to improve tomorrow\n- \n\n" +
+    "## One small win\n- ";
+  var CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.8"/></svg>';
+  var SERIES = [
+    { k: "mood", name: "Mood", cls: "s1" },
+    { k: "energy", name: "Energy", cls: "s2" },
+    { k: "identity", name: "Identity match", cls: "s3" }
+  ];
+  var NS = "http://www.w3.org/2000/svg";
+
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function isoOf(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function parseISO(s) { var p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function dayDate(i) { var d = parseISO(state.start); d.setDate(d.getDate() + i); return d; }
+  function fmt(d) { return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }); }
+  function fmtLong(d) { return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); }
+  function todayIndex() { return Math.round((parseISO(isoOf(new Date())) - parseISO(state.start)) / 86400000); }
+  function avg(a) { if (!a.length) return null; var s = 0; for (var i = 0; i < a.length; i++) s += a[i]; return s / a.length; }
+
+  var state = load();
+  function load() {
+    var base = { identity: "", habit: "Wake up at my planned time", twoMin: "", book: "", start: isoOf(new Date()), length: 14, days: {}, reviews: {} };
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var s = JSON.parse(raw);
+        if (s && typeof s === "object") {
+          return {
+            identity: typeof s.identity === "string" ? s.identity : "",
+            habit: typeof s.habit === "string" ? s.habit : base.habit,
+            twoMin: typeof s.twoMin === "string" ? s.twoMin : "",
+            book: typeof s.book === "string" ? s.book : "",
+            start: typeof s.start === "string" ? s.start : base.start,
+            length: [7, 14, 21, 30, 66].indexOf(+s.length) >= 0 ? +s.length : 14,
+            days: s.days && typeof s.days === "object" ? s.days : {},
+            reviews: s.reviews && typeof s.reviews === "object" ? s.reviews : {}
+          };
+        }
+      }
+    } catch (e) {}
+    return base;
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); return true; } catch (e) { return false; }
+  }
+
+  var $ = function (id) { return document.getElementById(id); };
+  var els = {
+    title: $("title"), idline: $("identityline"), count: $("count"), pct: $("pct"), bar: $("bar"), fill: $("barfill"), line: $("habitline"),
+    cur: $("curStreak"), best: $("bestStreak"), alert: $("alert"), reviewChip: $("reviewChip"),
+    identity: $("identity"), habit: $("habit"), twomin: $("twomin"), start: $("start"), length: $("length"), grid: $("grid"), reset: $("reset"),
+    editor: $("editor"), edtitle: $("edtitle"), edsub: $("edsub"), donebox: $("donebox"), remind: $("remind"),
+    tabWrite: $("tabWrite"), tabPreview: $("tabPreview"), note: $("note"), preview: $("preview"),
+    planIf: $("planIf"), planThen: $("planThen"),
+    copyDay: $("copyDay"), copyAll: $("copyAll"), status: $("status"),
+    insEmpty: $("insEmpty"), legend: $("legend"), chartwrap: $("chartwrap"), chart: $("chart"), tip: $("tip"),
+    tablewrap: $("tablewrap"), facts: $("facts"), viewChart: $("viewChart"), viewTable: $("viewTable"),
+    review: $("review"), rvSub: $("rvsub"), rvSelWrap: $("rvselwrap"), rvWeek: $("rvweek"), rvLocked: $("rvlocked"),
+    rvForm: $("rvform"), rvSummary: $("rvsummary"), rvWorked: $("rvWorked"), rvFailed: $("rvFailed"), rvChange: $("rvChange"), rvStatus: $("rvStatus"),
+    book: $("book"), bookname: $("bookname"), chapter: $("chapter"), lessons: $("lessons"), actList: $("actList"),
+    actNew: $("actNew"), actAdd: $("actAdd"), bkSub: $("bksub"), bkEmpty: $("bkEmpty"), bkList: $("bkList"),
+    bkOpen: $("bkOpen"), bkAll: $("bkAll")
+  };
+
+  var selected = 0;
+  (function pickToday() {
+    var t = todayIndex();
+    selected = t >= 0 && t < state.length ? t : 0;
+  })();
+
+  function isDone(i) { return !!(state.days[i] && state.days[i].done); }
+  function doneCount() {
+    var n = 0;
+    for (var i = 0; i < state.length; i++) { if (isDone(i)) n++; }
+    return n;
+  }
+
+  function streaks() {
+    var t = todayIndex(), cur = 0, best = 0, run = 0, j;
+    if (t >= 0) {
+      var anchor = Math.min(t, state.length - 1);
+      var i = isDone(anchor) ? anchor : anchor - 1;
+      while (i >= 0 && isDone(i)) { cur++; i--; }
+    }
+    for (j = 0; j < state.length; j++) {
+      if (isDone(j)) { run++; if (run > best) best = run; } else { run = 0; }
+    }
+    return { cur: cur, best: best };
+  }
+
+  function alertText() {
+    var t = todayIndex();
+    if (t < 1 || t >= state.length || isDone(t)) return "";
+    var misses = 0, i = t - 1;
+    while (i >= 0 && !isDone(i)) { misses++; i--; }
+    if (misses === 0) return "";
+    var tail = state.twoMin.trim() ? " Your 2-minute version: " + state.twoMin.trim() + "." : "";
+    if (misses === 1) return "You missed yesterday. Never miss twice: do today's habit, even the smallest version, and mark today." + tail;
+    return "You have missed " + misses + " days in a row. Restart today with the smallest version of your habit and mark today." + tail;
+  }
+
+  function lowerFirst(s) { return s.charAt(0).toLowerCase() + s.slice(1); }
+
+  function renderHeader() {
+    var n = doneCount(), pct = Math.round((n / state.length) * 100);
+    els.title.textContent = state.length + "-day habit journal";
+    els.count.textContent = n + "/" + state.length + " days";
+    els.pct.textContent = pct + "% completed";
+    els.fill.style.width = pct + "%";
+    els.bar.setAttribute("aria-valuenow", String(pct));
+    els.line.textContent = state.habit
+      ? "Tick each day when you " + lowerFirst(state.habit) + "."
+      : "Tick each day when you complete your habit.";
+    if (state.identity.trim()) { els.idline.textContent = state.identity.trim(); els.idline.hidden = false; }
+    else { els.idline.hidden = true; }
+    var s = streaks();
+    els.cur.textContent = s.cur;
+    els.best.textContent = s.best;
+    var a = alertText();
+    els.alert.textContent = a;
+    els.alert.hidden = !a;
+  }
+
+  function renderGrid() {
+    var todayISO = isoOf(new Date());
+    var html = "";
+    for (var i = 0; i < state.length; i++) {
+      var d = dayDate(i), done = isDone(i);
+      var cls = "day" + (done ? " done" : "") + (i === selected ? " sel" : "") + (isoOf(d) === todayISO ? " today" : "");
+      html += '<button type="button" class="' + cls + '" data-i="' + i + '" aria-pressed="' + done + '" aria-label="Day ' + (i + 1) + ", " + fmt(d) + (done ? ", done" : "") + '">' +
+        '<span class="mark">' + (done ? CHECK : (i + 1)) + '</span>' +
+        '<span class="lbl">Day ' + (i + 1) + '</span>' +
+        '<span class="date">' + fmt(d) + '</span></button>';
+    }
+    els.grid.innerHTML = html;
+  }
+
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+  function renderRemind() {
+    var parts = [];
+    if (state.identity.trim()) {
+      parts.push('<div><span class="k">Voting for</span>' + esc(state.identity.trim()) + '</div>');
+    }
+    if (state.twoMin.trim()) {
+      parts.push('<div><span class="k">2-minute version</span>' + esc(state.twoMin.trim()) + '</div>');
+    }
+    var prev = selected > 0 ? state.days[selected - 1] : null;
+    if (prev && ((prev.planIf && prev.planIf.trim()) || (prev.planThen && prev.planThen.trim()))) {
+      var pi = prev.planIf && prev.planIf.trim() ? esc(prev.planIf.trim()) : "...";
+      var pt = prev.planThen && prev.planThen.trim() ? esc(prev.planThen.trim()) : "...";
+      parts.push('<div><span class="k">Yesterday\'s plan</span>If ' + pi + ', then I will ' + pt + '.</div>');
+    }
+    els.remind.innerHTML = parts.join("");
+    els.remind.hidden = parts.length === 0;
+  }
+
+  function paintRates() {
+    var entry = state.days[selected] || {};
+    SERIES.forEach(function (s) {
+      var btns = $(s.k + "Rate").children;
+      for (var i = 0; i < btns.length; i++) btns[i].setAttribute("aria-pressed", String(entry[s.k] === i + 1));
+    });
+  }
+
+  function loadEditor() {
+    var d = dayDate(selected), entry = state.days[selected];
+    els.edtitle.textContent = "Day " + (selected + 1) + " journal";
+    els.edsub.textContent = fmtLong(d);
+    els.donebox.checked = !!(entry && entry.done);
+    els.note.value = entry && typeof entry.note === "string" ? entry.note : TEMPLATE;
+    els.planIf.value = entry && entry.planIf ? entry.planIf : "";
+    els.planThen.value = entry && entry.planThen ? entry.planThen : "";
+    els.chapter.value = entry && entry.chapter ? entry.chapter : "";
+    els.lessons.value = entry && entry.lessons ? entry.lessons : "";
+    els.bookname.textContent = state.book.trim() ? "· " + state.book.trim() : "";
+    renderActs();
+    renderRemind();
+    paintRates();
+    setMode("write");
+    els.status.textContent = "";
+  }
+
+  function setMode(mode) {
+    var w = mode === "write";
+    els.tabWrite.setAttribute("aria-pressed", String(w));
+    els.tabPreview.setAttribute("aria-pressed", String(!w));
+    els.note.hidden = !w;
+    els.preview.hidden = w;
+    if (!w) {
+      var html = md(els.note.value);
+      els.preview.innerHTML = html || '<p class="empty">Nothing written yet.</p>';
+    }
+  }
+
+  function inline(s) {
+    return esc(s)
+      .replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*([^*]+)\*/g, "<em>$1</em>");
+  }
+  function md(src) {
+    var out = [], list = false, lines = src.split("\n");
+    function close() { if (list) { out.push("</ul>"); list = false; } }
+    for (var k = 0; k < lines.length; k++) {
+      var l = lines[k].replace(/\s+$/, ""), m;
+      if ((m = l.match(/^(#{1,3})\s+(.*)$/))) {
+        close(); var lv = m[1].length + 1;
+        out.push("<h" + lv + ">" + inline(m[2]) + "</h" + lv + ">");
+      } else if (/^\s*[-*]$/.test(l)) {
+        continue;
+      } else if ((m = l.match(/^\s*[-*]\s+(.*)$/))) {
+        if (!m[1].replace(/^[^:]*:\s*$/, "").trim()) continue;
+        if (!list) { out.push("<ul>"); list = true; }
+        out.push("<li>" + inline(m[1]) + "</li>");
+      } else if (!l.trim()) {
+        close();
+      } else {
+        close(); out.push("<p>" + inline(l) + "</p>");
+      }
+    }
+    close();
+    var hasText = out.some(function (x) { return x.indexOf("<li>") === 0 || x.indexOf("<p>") === 0; });
+    return hasText ? out.join("") : "";
+  }
+
+  function flash(msg, el) {
+    el = el || els.status;
+    el.textContent = msg;
+    clearTimeout(el._t);
+    el._t = setTimeout(function () { el.textContent = ""; }, 2500);
+  }
+
+  function ensure(i) { if (!state.days[i]) state.days[i] = { done: false }; return state.days[i]; }
+
+  /* ---------- Insights ---------- */
+  var view = "chart", crossIdx = null, geo = null;
+
+  function rowsData() {
+    var out = [];
+    for (var i = 0; i < state.length; i++) {
+      var e = state.days[i] || {};
+      out.push({ i: i, date: fmt(dayDate(i)), done: !!e.done, mood: e.mood || 0, energy: e.energy || 0, identity: e.identity || 0 });
+    }
+    return out;
+  }
+
+  function sv(tag, attrs, text) {
+    var e = document.createElementNS(NS, tag);
+    for (var a in attrs) { if (Object.prototype.hasOwnProperty.call(attrs, a)) e.setAttribute(a, attrs[a]); }
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function drawChart(r) {
+    var svg = els.chart;
+    svg.textContent = "";
+    var n = r.length, W = Math.max(280, els.chartwrap.clientWidth || 600), H = 236;
+    var L = 44, R = 12, T = 10, B = 54, pw = W - L - R, ph = H - T - B, i, v;
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    function xAt(k) { return n === 1 ? L + pw / 2 : L + 8 + k * (pw - 16) / (n - 1); }
+    function yAt(val) { return T + (5 - val) / 4 * ph; }
+    geo = { W: W, xAt: xAt, n: n };
+
+    for (v = 1; v <= 5; v++) {
+      svg.appendChild(sv("line", { x1: L, x2: W - R, y1: yAt(v), y2: yAt(v), "class": "gl" }));
+      svg.appendChild(sv("text", { x: L - 8, y: yAt(v) + 4, "text-anchor": "end", "class": "ax" }, String(v)));
+    }
+    var step = Math.ceil(n / 10);
+    for (i = 0; i < n; i++) {
+      if (i % step === 0) svg.appendChild(sv("text", { x: xAt(i), y: T + ph + 16, "text-anchor": "middle", "class": "ax" }, String(i + 1)));
+    }
+    var bw = Math.max(3, Math.min(18, (pw - 16) / n - 3)), sy = T + ph + 30;
+    svg.appendChild(sv("text", { x: L - 8, y: sy + 7, "text-anchor": "end", "class": "ax" }, "Done"));
+    for (i = 0; i < n; i++) {
+      svg.appendChild(sv("rect", { x: xAt(i) - bw / 2, y: sy, width: bw, height: 6, rx: 2, "class": r[i].done ? "dn on" : "dn" }));
+    }
+
+    var cl = sv("line", { x1: 0, x2: 0, y1: T, y2: T + ph, "class": "cross" });
+    cl.setAttribute("visibility", "hidden");
+    svg.appendChild(cl);
+    geo.cl = cl;
+
+    SERIES.forEach(function (s) {
+      var segs = [], seg = [], pts = [], k;
+      for (k = 0; k < n; k++) {
+        if (r[k][s.k]) { seg.push(k); pts.push(k); }
+        else { if (seg.length) segs.push(seg); seg = []; }
+      }
+      if (seg.length) segs.push(seg);
+      segs.forEach(function (sg) {
+        if (sg.length < 2) return;
+        var d = sg.map(function (idx, p) { return (p ? "L" : "M") + xAt(idx).toFixed(1) + " " + yAt(r[idx][s.k]).toFixed(1); }).join(" ");
+        svg.appendChild(sv("path", { d: d, "class": "ln " + s.cls }));
+      });
+      var show = n <= 31 ? pts : pts.slice(-1);
+      show.forEach(function (idx) {
+        svg.appendChild(sv("circle", { cx: xAt(idx), cy: yAt(r[idx][s.k]), r: 6, "class": "ring" }));
+        svg.appendChild(sv("circle", { cx: xAt(idx), cy: yAt(r[idx][s.k]), r: 4, "class": "dot " + s.cls }));
+      });
+    });
+
+    if (crossIdx !== null) showCross(crossIdx);
+  }
+
+  function showCross(i) {
+    var r = rowsData();
+    if (!geo || !r[i]) return;
+    crossIdx = i;
+    var x = geo.xAt(i);
+    geo.cl.setAttribute("x1", x);
+    geo.cl.setAttribute("x2", x);
+    geo.cl.setAttribute("visibility", "visible");
+    var t = els.tip;
+    t.textContent = "";
+    var tt = document.createElement("div");
+    tt.className = "tt";
+    tt.textContent = "Day " + (i + 1) + " · " + r[i].date;
+    t.appendChild(tt);
+    SERIES.forEach(function (s) {
+      var row = document.createElement("div"); row.className = "tr";
+      var key = document.createElement("i"); key.className = s.cls;
+      var b = document.createElement("b"); b.textContent = r[i][s.k] ? String(r[i][s.k]) : "–";
+      var nm = document.createElement("span"); nm.textContent = s.name;
+      row.appendChild(key); row.appendChild(b); row.appendChild(nm);
+      t.appendChild(row);
+    });
+    var dr = document.createElement("div"); dr.className = "tr";
+    var dk = document.createElement("i"); dk.className = "s0";
+    var db = document.createElement("b"); db.textContent = r[i].done ? "Yes" : "No";
+    var dn = document.createElement("span"); dn.textContent = "Done";
+    dr.appendChild(dk); dr.appendChild(db); dr.appendChild(dn);
+    t.appendChild(dr);
+    t.hidden = false;
+    var rect = els.chart.getBoundingClientRect();
+    var px = x * (rect.width / geo.W), tw = t.offsetWidth;
+    var left = px + 12;
+    if (left + tw > rect.width) left = Math.max(0, px - 12 - tw);
+    t.style.left = left + "px";
+  }
+
+  function hideCross() {
+    crossIdx = null;
+    if (geo && geo.cl) geo.cl.setAttribute("visibility", "hidden");
+    els.tip.hidden = true;
+  }
+
+  function nearestIndex(clientX) {
+    var rect = els.chart.getBoundingClientRect();
+    var x = (clientX - rect.left) * (geo.W / rect.width), best = 0, bd = Infinity;
+    for (var i = 0; i < geo.n; i++) {
+      var d = Math.abs(geo.xAt(i) - x);
+      if (d < bd) { bd = d; best = i; }
+    }
+    return best;
+  }
+
+  function lastRated() {
+    var r = rowsData();
+    for (var i = r.length - 1; i >= 0; i--) { if (r[i].mood || r[i].energy || r[i].identity) return i; }
+    return r.length - 1;
+  }
+
+  function drawTable(r) {
+    var w = els.tablewrap;
+    w.textContent = "";
+    var t = document.createElement("table");
+    var cap = document.createElement("caption");
+    cap.className = "sr";
+    cap.textContent = "Daily ratings and completion";
+    t.appendChild(cap);
+    var thead = document.createElement("thead"), hr = document.createElement("tr");
+    ["Day", "Date", "Done", "Mood", "Energy", "Identity match"].forEach(function (h) {
+      var th = document.createElement("th"); th.scope = "col"; th.textContent = h; hr.appendChild(th);
+    });
+    thead.appendChild(hr); t.appendChild(thead);
+    var tb = document.createElement("tbody");
+    r.forEach(function (x) {
+      var tr = document.createElement("tr");
+      [String(x.i + 1), x.date, x.done ? "Yes" : "No", x.mood || "–", x.energy || "–", x.identity || "–"].forEach(function (c) {
+        var td = document.createElement("td"); td.textContent = String(c); tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    w.appendChild(t);
+  }
+
+  function drawFacts(r) {
+    var ul = els.facts;
+    ul.textContent = "";
+    SERIES.forEach(function (s) {
+      var vals = [], dv = [], nv = [];
+      r.forEach(function (x) {
+        if (x[s.k]) { vals.push(x[s.k]); (x.done ? dv : nv).push(x[s.k]); }
+      });
+      if (!vals.length) return;
+      var line = s.name + " averages " + avg(vals).toFixed(1) + " across " + vals.length + (vals.length === 1 ? " day." : " days.");
+      if (dv.length && nv.length) {
+        line += " It was " + avg(dv).toFixed(1) + " on days you did the habit and " + avg(nv).toFixed(1) + " on days you did not.";
+      }
+      var li = document.createElement("li");
+      li.textContent = line;
+      ul.appendChild(li);
+    });
+  }
+
+  function renderInsights() {
+    var r = rowsData();
+    var any = r.some(function (x) { return x.mood || x.energy || x.identity; });
+    els.legend.textContent = "";
+    SERIES.forEach(function (s) {
+      var span = document.createElement("span"); span.className = "key";
+      var sw = document.createElement("i"); sw.className = s.cls;
+      span.appendChild(sw); span.appendChild(document.createTextNode(s.name));
+      els.legend.appendChild(span);
+    });
+    els.viewChart.setAttribute("aria-pressed", String(view === "chart"));
+    els.viewTable.setAttribute("aria-pressed", String(view === "table"));
+    els.insEmpty.hidden = any;
+    var showChart = view === "chart" && any;
+    els.legend.hidden = !showChart;
+    els.chartwrap.hidden = !showChart;
+    els.tablewrap.hidden = view !== "table";
+    if (showChart) drawChart(r);
+    if (view === "table") drawTable(r);
+    drawFacts(r);
+  }
+
+  els.chart.addEventListener("pointermove", function (e) { if (geo) showCross(nearestIndex(e.clientX)); });
+  els.chart.addEventListener("pointerdown", function (e) { if (geo) showCross(nearestIndex(e.clientX)); });
+  els.chart.addEventListener("pointerleave", function () { if (document.activeElement !== els.chart) hideCross(); });
+  els.chart.addEventListener("focus", function () { if (geo && crossIdx === null) showCross(lastRated()); });
+  els.chart.addEventListener("blur", hideCross);
+  els.chart.addEventListener("keydown", function (e) {
+    if (!geo) return;
+    var cur = crossIdx === null ? lastRated() : crossIdx;
+    if (e.key === "ArrowLeft") { e.preventDefault(); showCross(Math.max(0, cur - 1)); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); showCross(Math.min(geo.n - 1, cur + 1)); }
+    else if (e.key === "Escape") { hideCross(); }
+  });
+  els.viewChart.addEventListener("click", function () { view = "chart"; renderInsights(); });
+  els.viewTable.addEventListener("click", function () { view = "table"; hideCross(); renderInsights(); });
+
+  var resizeQueued = false;
+  window.addEventListener("resize", function () {
+    if (resizeQueued || view !== "chart") return;
+    resizeQueued = true;
+    requestAnimationFrame(function () { resizeQueued = false; renderInsights(); });
+  });
+
+  /* ---------- Weekly review ---------- */
+  var reviewWeek = null;
+  function weekCount() { return Math.ceil(state.length / 7); }
+  function weekEnd(w) { return Math.min(w * 7 + 7, state.length) - 1; }
+  function review(w) { return state.reviews[w] || {}; }
+  function reviewEmpty(w) {
+    var r = review(w);
+    return !((r.worked || "").trim() || (r.failed || "").trim() || (r.change || "").trim());
+  }
+  function unlockedWeeks() {
+    var t = todayIndex(), o = [];
+    for (var w = 0; w < weekCount(); w++) { if (t >= weekEnd(w)) o.push(w); }
+    return o;
+  }
+  function pendingWeek() {
+    var u = unlockedWeeks();
+    for (var i = 0; i < u.length; i++) { if (reviewEmpty(u[i])) return u[i]; }
+    return null;
+  }
+  function weekSummary(w) {
+    var s = w * 7, e = weekEnd(w), done = 0, sums = { mood: [], energy: [], identity: [] }, i;
+    for (i = s; i <= e; i++) {
+      var x = state.days[i] || {};
+      if (x.done) done++;
+      ["mood", "energy", "identity"].forEach(function (k) { if (x[k]) sums[k].push(x[k]); });
+    }
+    var txt = done + " of " + (e - s + 1) + " days done.";
+    var bits = [];
+    [["mood", "mood"], ["energy", "energy"], ["identity", "identity match"]].forEach(function (p) {
+      if (sums[p[0]].length) bits.push(p[1] + " " + avg(sums[p[0]]).toFixed(1));
+    });
+    if (bits.length) txt += " Average " + bits.join(", ") + ".";
+    return txt;
+  }
+  function updateChip() {
+    var pend = pendingWeek();
+    if (pend === null) { els.reviewChip.hidden = true; return; }
+    els.reviewChip.hidden = false;
+    els.reviewChip.textContent = "Week " + (pend + 1) + " review is ready";
+  }
+  function renderReview() {
+    var u = unlockedWeeks(), pend = pendingWeek();
+    updateChip();
+    if (!u.length) {
+      els.rvLocked.hidden = false; els.rvForm.hidden = true; els.rvSelWrap.hidden = true;
+      var e0 = weekEnd(0);
+      els.rvLocked.textContent = "Your first review unlocks on Day " + (e0 + 1) + " (" + fmt(dayDate(e0)) + "). Every 7 days you will look back and choose one change for the next week.";
+      els.rvSub.textContent = "Unlocks every 7 days";
+      return;
+    }
+    if (reviewWeek === null || u.indexOf(reviewWeek) < 0) reviewWeek = pend !== null ? pend : u[u.length - 1];
+    els.rvLocked.hidden = true; els.rvForm.hidden = false; els.rvSelWrap.hidden = false;
+    els.rvWeek.textContent = "";
+    u.forEach(function (w) {
+      var o = document.createElement("option");
+      o.value = String(w);
+      o.textContent = "Week " + (w + 1) + (reviewEmpty(w) ? " (pending)" : "");
+      els.rvWeek.appendChild(o);
+    });
+    els.rvWeek.value = String(reviewWeek);
+    els.rvSub.textContent = "Week " + (reviewWeek + 1) + " · Days " + (reviewWeek * 7 + 1) + " to " + (weekEnd(reviewWeek) + 1);
+    els.rvSummary.textContent = weekSummary(reviewWeek);
+    var rv = review(reviewWeek);
+    els.rvWorked.value = rv.worked || "";
+    els.rvFailed.value = rv.failed || "";
+    els.rvChange.value = rv.change || "";
+  }
+  els.rvWeek.addEventListener("change", function () { reviewWeek = +els.rvWeek.value; renderReview(); });
+  [["rvWorked", "worked"], ["rvFailed", "failed"], ["rvChange", "change"]].forEach(function (p) {
+    els[p[0]].addEventListener("input", function () {
+      if (reviewWeek === null) return;
+      var rv = state.reviews[reviewWeek] || (state.reviews[reviewWeek] = {});
+      rv[p[1]] = els[p[0]].value;
+      var ok = save();
+      updateChip();
+      flash(ok ? "Saved" : "Not saved: browser storage is blocked", els.rvStatus);
+    });
+  });
+  els.reviewChip.addEventListener("click", function () {
+    var pend = pendingWeek();
+    if (pend !== null) { reviewWeek = pend; renderReview(); }
+    els.review.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  });
+
+  /* ---------- Book notes and action points ---------- */
+  var bkView = "todo";
+  function actsOf(i) { var e = state.days[i]; return e && e.actions instanceof Array ? e.actions : []; }
+  function actItem(a, srcText, onToggle, onRemove) {
+    var li = document.createElement("li");
+    var cb = document.createElement("input");
+    cb.type = "checkbox"; cb.checked = !!a.d;
+    cb.setAttribute("aria-label", "Implemented: " + a.t);
+    cb.addEventListener("change", function () { onToggle(cb.checked); });
+    var box = document.createElement("div");
+    box.className = "t";
+    var tx = document.createElement("span");
+    tx.className = "tx" + (a.d ? " done" : "");
+    tx.textContent = a.t;
+    box.appendChild(tx);
+    if (srcText) {
+      var src = document.createElement("span");
+      src.className = "src";
+      src.textContent = srcText;
+      box.appendChild(src);
+    }
+    li.appendChild(cb);
+    li.appendChild(box);
+    if (onRemove) {
+      var rm = document.createElement("button");
+      rm.type = "button"; rm.className = "rm"; rm.textContent = "×";
+      rm.setAttribute("aria-label", "Remove action point: " + a.t);
+      rm.addEventListener("click", onRemove);
+      li.appendChild(rm);
+    }
+    return li;
+  }
+  function renderActs() {
+    var list = actsOf(selected), ul = els.actList;
+    ul.textContent = "";
+    list.forEach(function (a, idx) {
+      ul.appendChild(actItem(a, "", function (v) {
+        a.d = v; save(); renderActs(); renderBook();
+      }, function () {
+        state.days[selected].actions.splice(idx, 1); save(); renderActs(); renderBook();
+      }));
+    });
+    ul.hidden = !list.length;
+  }
+  function renderBook() {
+    var all = [], i;
+    for (i = 0; i < state.length; i++) {
+      actsOf(i).forEach(function (a, idx) { all.push({ a: a, i: i, idx: idx }); });
+    }
+    var done = all.filter(function (x) { return x.a.d; }).length;
+    els.bkSub.textContent = all.length ? done + " of " + all.length + " implemented" : "Nothing added yet";
+    els.bkOpen.setAttribute("aria-pressed", String(bkView === "todo"));
+    els.bkAll.setAttribute("aria-pressed", String(bkView === "all"));
+    var shown = bkView === "todo" ? all.filter(function (x) { return !x.a.d; }) : all;
+    els.bkList.textContent = "";
+    shown.forEach(function (x) {
+      els.bkList.appendChild(actItem(x.a, "Day " + (x.i + 1) + " · " + fmt(dayDate(x.i)), function (v) {
+        x.a.d = v; save(); renderBook(); if (x.i === selected) renderActs();
+      }, null));
+    });
+    els.bkList.hidden = !shown.length;
+    if (!all.length) {
+      els.bkEmpty.textContent = "Action points you add in a day's book notes appear here. Tick each one when you have really done it.";
+      els.bkEmpty.hidden = false;
+    } else if (!shown.length) {
+      els.bkEmpty.textContent = "All action points are implemented. Add a new one from your next reading.";
+      els.bkEmpty.hidden = false;
+    } else {
+      els.bkEmpty.hidden = true;
+    }
+  }
+
+  /* ---------- Wiring ---------- */
+  function refreshTop() { renderHeader(); renderGrid(); renderInsights(); renderReview(); renderBook(); }
+
+  els.grid.addEventListener("click", function (e) {
+    var b = e.target.closest(".day");
+    if (!b) return;
+    selected = +b.getAttribute("data-i");
+    var entry = ensure(selected);
+    if (!entry.done) entry.done = true;
+    save();
+    refreshTop(); loadEditor();
+    els.editor.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  });
+
+  els.donebox.addEventListener("change", function () {
+    ensure(selected).done = els.donebox.checked;
+    save(); refreshTop();
+    flash(els.donebox.checked ? "Marked done" : "Marked not done");
+  });
+
+  els.note.addEventListener("input", function () {
+    ensure(selected).note = els.note.value;
+    var ok = save();
+    flash(ok ? "Saved" : "Not saved: browser storage is blocked");
+  });
+
+  els.planIf.addEventListener("input", function () {
+    ensure(selected).planIf = els.planIf.value; save(); flash("Saved");
+  });
+  els.planThen.addEventListener("input", function () {
+    ensure(selected).planThen = els.planThen.value; save(); flash("Saved");
+  });
+
+  SERIES.forEach(function (s) {
+    var box = $(s.k + "Rate"), h = "";
+    for (var v = 1; v <= 5; v++) {
+      h += '<button type="button" data-v="' + v + '" aria-pressed="false" aria-label="' + s.name + " " + v + ' of 5">' + v + "</button>";
+    }
+    box.innerHTML = h;
+    box.addEventListener("click", function (e) {
+      var b = e.target.closest("button");
+      if (!b) return;
+      var val = +b.getAttribute("data-v"), entry = ensure(selected);
+      if (entry[s.k] === val) { delete entry[s.k]; } else { entry[s.k] = val; }
+      save(); paintRates(); renderInsights(); renderReview();
+      flash("Saved");
+    });
+  });
+
+  els.tabWrite.addEventListener("click", function () { setMode("write"); });
+  els.tabPreview.addEventListener("click", function () { setMode("preview"); });
+
+  els.identity.addEventListener("input", function () {
+    state.identity = els.identity.value; save(); renderHeader(); renderRemind();
+  });
+  els.habit.addEventListener("input", function () {
+    state.habit = els.habit.value; save(); renderHeader();
+  });
+  els.twomin.addEventListener("input", function () {
+    state.twoMin = els.twomin.value; save(); renderHeader(); renderRemind();
+  });
+  els.book.addEventListener("input", function () {
+    state.book = els.book.value; save();
+    els.bookname.textContent = state.book.trim() ? "· " + state.book.trim() : "";
+  });
+  els.chapter.addEventListener("input", function () {
+    ensure(selected).chapter = els.chapter.value; save(); flash("Saved");
+  });
+  els.lessons.addEventListener("input", function () {
+    ensure(selected).lessons = els.lessons.value; save(); flash("Saved");
+  });
+  function addAction() {
+    var t = els.actNew.value.trim();
+    if (!t) return;
+    var e = ensure(selected);
+    if (!(e.actions instanceof Array)) e.actions = [];
+    e.actions.push({ t: t, d: false });
+    els.actNew.value = "";
+    save(); renderActs(); renderBook(); flash("Saved");
+  }
+  els.actAdd.addEventListener("click", addAction);
+  els.actNew.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); addAction(); }
+  });
+  els.bkOpen.addEventListener("click", function () { bkView = "todo"; renderBook(); });
+  els.bkAll.addEventListener("click", function () { bkView = "all"; renderBook(); });
+  els.start.addEventListener("change", function () {
+    if (!els.start.value) return;
+    state.start = els.start.value; save(); refreshTop(); loadEditor();
+  });
+  els.length.addEventListener("change", function () {
+    state.length = +els.length.value;
+    if (selected >= state.length) selected = 0;
+    reviewWeek = null; hideCross();
+    save(); refreshTop(); loadEditor();
+  });
+
+  function copyText(text, okMsg) {
+    function fallback() {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      var ok = false;
+      try { ok = document.execCommand("copy"); } catch (e) {}
+      document.body.removeChild(ta);
+      flash(ok ? okMsg : "Copy blocked. Select the text and copy it manually.");
+    }
+    try {
+      navigator.clipboard.writeText(text).then(function () { flash(okMsg); }, fallback);
+    } catch (e) { fallback(); }
+  }
+
+  function dayMarkdown(i, note) {
+    var e = state.days[i] || {}, d = dayDate(i), meta = [];
+    if (e.mood) meta.push("Mood: " + e.mood + "/5");
+    if (e.energy) meta.push("Energy: " + e.energy + "/5");
+    if (e.identity) meta.push("Identity match: " + e.identity + "/5");
+    var out = "## Day " + (i + 1) + " · " + fmt(d) + (e.done ? " ✅" : "") + "\n\n";
+    if (meta.length) out += meta.join(" · ") + "\n\n";
+    out += note + "\n";
+    var acts = e.actions instanceof Array ? e.actions : [];
+    if ((e.chapter && e.chapter.trim()) || (e.lessons && e.lessons.trim()) || acts.length) {
+      out += "\n### Book notes" + (state.book.trim() ? " · " + state.book.trim() : "") + "\n\n";
+      if (e.chapter && e.chapter.trim()) out += "**Read today:** " + e.chapter.trim() + "\n\n";
+      if (e.lessons && e.lessons.trim()) out += "**What I learned from the book:**\n" + e.lessons.trim() + "\n\n";
+      if (acts.length) {
+        out += "**How I will implement it:**\n";
+        acts.forEach(function (a) { out += "- [" + (a.d ? "x" : " ") + "] " + a.t + "\n"; });
+      }
+    }
+    if ((e.planIf && e.planIf.trim()) || (e.planThen && e.planThen.trim())) {
+      out += "\n**Plan for tomorrow:** If " + (e.planIf || "...").trim() + ", then I will " + (e.planThen || "...").trim() + ".\n";
+    }
+    return out;
+  }
+
+  els.copyDay.addEventListener("click", function () {
+    copyText(dayMarkdown(selected, els.note.value), "Copied this day");
+  });
+  els.copyAll.addEventListener("click", function () {
+    var parts = ["# " + (state.habit || "Habit journal")];
+    if (state.identity.trim()) parts.push("", "_" + state.identity.trim() + "_");
+    if (state.twoMin.trim()) parts.push("", "2-minute version: " + state.twoMin.trim());
+    if (state.book.trim()) parts.push("", "Book: " + state.book.trim());
+    parts.push("");
+    var i, w;
+    for (i = 0; i < state.length; i++) {
+      var e = state.days[i];
+      var hasNote = e && typeof e.note === "string" && e.note.trim();
+      if (!e || (!e.done && !hasNote && !e.mood && !e.energy && !e.identity && !e.planIf && !e.planThen && !e.chapter && !e.lessons && !(e.actions && e.actions.length))) continue;
+      parts.push(dayMarkdown(i, typeof e.note === "string" ? e.note : ""));
+    }
+    for (w = 0; w < weekCount(); w++) {
+      if (reviewEmpty(w)) continue;
+      var rv = review(w);
+      parts.push("## Week " + (w + 1) + " review", "");
+      parts.push("**What worked:** " + (rv.worked || "").trim());
+      parts.push("**What did not work:** " + (rv.failed || "").trim());
+      parts.push("**One change for next week:** " + (rv.change || "").trim());
+      parts.push("");
+    }
+    copyText(parts.join("\n"), "Copied all entries");
+  });
+
+  var armTimer;
+  els.reset.addEventListener("click", function () {
+    if (!els.reset.classList.contains("armed")) {
+      els.reset.classList.add("armed");
+      els.reset.textContent = "Tap again to erase all days and notes";
+      armTimer = setTimeout(disarm, 4000);
+      return;
+    }
+    disarm();
+    state.days = {}; state.reviews = {}; selected = 0; reviewWeek = null; hideCross(); save();
+    refreshTop(); loadEditor();
+    flash("Challenge reset");
+  });
+  function disarm() {
+    clearTimeout(armTimer);
+    els.reset.classList.remove("armed");
+    els.reset.textContent = "Reset challenge";
+  }
+
+  els.identity.value = state.identity;
+  els.habit.value = state.habit;
+  els.twomin.value = state.twoMin;
+  els.book.value = state.book;
+  els.start.value = state.start;
+  els.length.value = String(state.length);
+  refreshTop(); loadEditor();
+})();
+</script>
+
+</body></html>
